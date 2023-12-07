@@ -15,9 +15,9 @@ nltk.download('vader_lexicon')
 
 # Ensure the necessary NLTK resources are downloaded
 sia = SentimentIntensityAnalyzer()
+
 stop_words = set(stopwords.words('english'))
 
-# Quotes for emotions
 # Quotes for emotions
 quotes = {
     'sad': [
@@ -184,10 +184,9 @@ def provide_quote(emotion):
 # Main chatbot function adapted for Streamlit
 def eliza_chatbot():
     st.title("Eliza Chatbot")
-
-    # Initialize session state variables if they don't exist
+    
     if 'name' not in st.session_state:
-        st.session_state['name'] = ''
+        st.session_state['name'] = None
     if 'current_emotion' not in st.session_state:
         st.session_state['current_emotion'] = 'neutral'
     if 'previous_emotion' not in st.session_state:
@@ -197,61 +196,47 @@ def eliza_chatbot():
     if 'previous_inputs' not in st.session_state:
         st.session_state['previous_inputs'] = set()
 
-    # Ask for user's name if not provided yet
-    if st.session_state['name'] == '':
-        st.session_state['name'] = st.text_input("What is your name?").strip()
+    if not st.session_state['name']:
+        st.session_state['name'] = st.text_input("What is your name?")
         if st.session_state['name']:
             st.write(f"Nice to meet you, {st.session_state['name']}. How are you feeling today?")
-        return
+    else:
+        user_input = st.text_input("You can share your feelings or just say anything that's on your mind.")
 
-    # Main conversation loop
-    user_input = st.text_input("You can share your feelings or just say anything that's on your mind.", key="user_input").strip()
+        if user_input:
+            if user_input.lower() in ['quit', 'exit', 'bye', 'goodbye']:
+                st.write("Goodbye! It was nice talking to you.")
+                st.session_state['name'] = None  # Reset for new conversation
+                return
 
-    if user_input:
-        # Check for conversation termination
-        if user_input.lower() in ['quit', 'exit', 'bye', 'goodbye']:
-            st.write("Goodbye! It was nice talking to you.")
-            st.session_state.clear()  # Reset all session state
-            return
+            if user_input.lower() in st.session_state['previous_inputs']:
+                st.write("You've mentioned that before. Would you like to explore something else or go deeper into this topic?")
+            else:
+                st.session_state['previous_inputs'].add(user_input.lower())
+                emotion, sentiment_score, responses = process_input(user_input)
+                named_entities = identify_named_entities(user_input)
 
-        # Handle repeated inputs
-        if user_input.lower() in st.session_state['previous_inputs']:
-            st.write("You've mentioned that before. Would you like to explore something else or go deeper into this topic?")
-            return
-        else:
-            st.session_state['previous_inputs'].add(user_input.lower())
+                if abs(sentiment_score - st.session_state['previous_sentiment_score']) > 0.4:
+                    st.session_state['previous_emotion'] = st.session_state['current_emotion']
+                    st.session_state['current_emotion'] = emotion
+                    st.session_state['previous_sentiment_score'] = sentiment_score
 
-        # Process user input
-        emotion, sentiment_score, responses = process_input(user_input)
-        named_entities = identify_named_entities(user_input)
-
-        # Update emotions and sentiment score
-        if abs(sentiment_score - st.session_state['previous_sentiment_score']) > 0.4:
-            st.session_state['previous_emotion'] = st.session_state['current_emotion']
-            st.session_state['current_emotion'] = emotion
-            st.session_state['previous_sentiment_score'] = sentiment_score
-
-        # Offer a quote based on emotion
-        # Offer a quote based on emotion
-        # Offer a quote based on emotion  
-        if emotion != 'neutral' and not emotion_contexts[emotion]['quote_offered']:
-            quote_choice = st.radio("Would you like to hear a quote?", ('Yes', 'No'), key="quote_choice")
-            if quote_choice == 'Yes':
-                st.write(provide_quote(emotion))
-                emotion_contexts[emotion]['quote_offered'] = True
-                st.write("Do you feel a bit better or would you like to keep talking?")
-            elif quote_choice == 'No':
-                st.write("Let's continue our conversation.")
-
-        # Generate response
-        if st.session_state['previous_emotion'] == st.session_state['current_emotion']:
-            response = random.choice(responses)
-        else:
-            response = "It seems like there might be a change in how you're feeling. Can you tell me more?"
-        if named_entities:
-            response += f" It must be significant for you to mention {', '.join(named_entities)}."
-        st.write(response)
-    
+                if emotion != 'neutral' and not emotion_contexts[emotion]['quote_offered']:
+                    quote_choice = st.radio("Would you like to hear a quote?", ('Yes', 'No'))
+                    if quote_choice == 'Yes':
+                        st.write(provide_quote(emotion))
+                        emotion_contexts[emotion]['quote_offered'] = True
+                        st.write("Do you feel a bit better or would you like to keep talking?")
+                    else:
+                        st.write("Let's continue our conversation.")
+                else:
+                    if st.session_state['previous_emotion'] == st.session_state['current_emotion']:
+                        response = random.choice(responses)
+                    else:
+                        response = "It seems like there might be a change in how you're feeling. Can you tell me more?"
+                    if named_entities:
+                        response += f" It must be significant for you to mention {', '.join(named_entities)}."
+                    st.write(response)
 
 # Run the chatbot
 if __name__ == "__main__":
