@@ -173,7 +173,8 @@ def identify_named_entities(text):
     for sent in nltk.sent_tokenize(text):
         for chunk in nltk.ne_chunk(nltk.pos_tag(nltk.word_tokenize(sent))):
             if hasattr(chunk, 'label'):
-                named_entities.app
+                named_entities.append(' '.join(c[0] for c in chunk.leaves()))
+    return named_entities
 
 def provide_quote(emotion):
     if emotion in quotes:
