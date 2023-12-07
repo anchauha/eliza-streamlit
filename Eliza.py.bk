@@ -182,78 +182,101 @@ def provide_quote(emotion):
     else:
         return "I don't have a quote for that, but I'm here to listen."
 
-# Main chatbot function adapted for Streamlit
+# Main chatbot function
+# Main chatbot function
 def eliza_chatbot():
-    st.title("Eliza Chatbot")
+  st.title("Eliza Chatbot")
+  # Initialize chat history
+  if "messages" not in st.session_state:
+      st.session_state.messages = []
+#  We've also added a check to see if the messages key is 
+# in st.session_state. If it's not, we initialize it to an 
+# empty list. This is because we'll be adding messages to the 
+# list later on, and we don't want to overwrite the list every time the app reruns.
 
-    # Initialize session state variables if they don't exist
-    if 'name' not in st.session_state:
-        st.session_state['name'] = ''
-    if 'current_emotion' not in st.session_state:
-        st.session_state['current_emotion'] = 'neutral'
-    if 'previous_emotion' not in st.session_state:
-        st.session_state['previous_emotion'] = 'neutral'
-    if 'previous_sentiment_score' not in st.session_state:
-        st.session_state['previous_sentiment_score'] = 0
-    if 'previous_inputs' not in st.session_state:
-        st.session_state['previous_inputs'] = set()
+# Display chat messages from history on app rerun
+  for message in st.session_state.messages:
+      with st.chat_message(message["role"]):
+        st.markdown(message["content"])
 
-    # Ask for user's name if not provided yet
-    if st.session_state['name'] == '':
-        st.session_state['name'] = st.text_input("What is your name?").strip()
-        if st.session_state['name']:
-            st.write(f"Nice to meet you, {st.session_state['name']}. How are you feeling today?")
-        return
+  # Initialize session state variables
+  if "name" not in st.session_state:
+    st.session_state["name"] = ""
+  if "current_emotion" not in st.session_state:
+    st.session_state["current_emotion"] = "neutral"
+  if "previous_emotion" not in st.session_state:
+    st.session_state["previous_emotion"] = "neutral"
+  if "previous_sentiment_score" not in st.session_state:
+    st.session_state["previous_sentiment_score"] = 0
+  if "previous_inputs" not in st.session_state:
+    st.session_state["previous_inputs"] = set()
+  if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
 
-    # Main conversation loop
-    user_input = st.text_input("You can share your feelings or just say anything that's on your mind.", key="user_input").strip()
+  # Display chat history
+  for message in st.session_state["chat_history"]:
+    role = message["role"]
+    content = message["content"]
+    if role == "user":
+      st.chat_message(content, role="user")
+    else:
+      st.chat_message(content, role="assistant")
 
-    if user_input:
-        # Check for conversation termination
-        if user_input.lower() in ['quit', 'exit', 'bye', 'goodbye']:
-            st.write("Goodbye! It was nice talking to you.")
-            st.session_state.clear()  # Reset all session state
-            return
+  # Ask for user's name if not provided yet
+  if st.session_state["name"] == "":
+    st.session_state["name"] = st.text_input("What is your name?").strip()
+    if st.session_state["name"]:
+      st.chat_message(f"Nice to meet you, {st.session_state['name']}. How are you feeling today?", role="assistant")
+    return
 
-        # Handle repeated inputs
-        if user_input.lower() in st.session_state['previous_inputs']:
-            st.write("You've mentioned that before. Would you like to explore something else or go deeper into this topic?")
-            return
-        else:
-            st.session_state['previous_inputs'].add(user_input.lower())
+  # Main conversation loop
+  user_input = st.chat_input("What can I help you with today?", key="user_input").strip()
 
-        # Process user input
-        emotion, sentiment_score, responses = process_input(user_input)
-        named_entities = identify_named_entities(user_input)
+  if user_input:
+    # Update chat history with user message
+    st.session_state["chat_history"].append({"role": "user", "content": user_input})
 
-        # Update emotions and sentiment score
-        if abs(sentiment_score - st.session_state['previous_sentiment_score']) > 0.4:
-            st.session_state['previous_emotion'] = st.session_state['current_emotion']
-            st.session_state['current_emotion'] = emotion
-            st.session_state['previous_sentiment_score'] = sentiment_score
+    # Check for conversation termination
+    if user_input.lower() in ["quit", "exit", "bye", "goodbye"]:
+      st.chat_message("Goodbye! It was nice talking to you.", role="assistant")
+      st.session_state.clear()  # Reset all session state
+      return
 
-        # Offer a quote based on emotion
-        # Offer a quote based on emotion
-        # Offer a quote based on emotion  
-        if emotion != 'neutral' and not emotion_contexts[emotion]['quote_offered']:
-            quote_choice = st.radio("Would you like to hear a quote?", ('Yes', 'No'), key="quote_choice")
-            if quote_choice == 'Yes':
-                st.write(provide_quote(emotion))
-                emotion_contexts[emotion]['quote_offered'] = True
-                #st.write("Do you feel a bit better or would you like to keep talking?")
-            elif quote_choice == 'No':
-                st.write("Let's continue our conversation.")
+    # Handle repeated inputs
+    if user_input.lower() in st.session_state["previous_inputs"]:
+      st.chat_message("You've mentioned that before. Would you like to explore something else or go deeper into this topic?", role="assistant")
+      return
+    else:
+      st.session_state["previous_inputs"].add(user_input.lower())
 
-        # Generate response
-        if st.session_state['previous_emotion'] == st.session_state['current_emotion']:
-            response = random.choice(responses)
-        else:
-            response = "It seems like there might be a change in how you're feeling. Can you tell me more?"
-        if named_entities:
-            response += f" It must be significant for you to mention {', '.join(named_entities)}."
-        st.write(response)
-    
+    # Process user input
+    emotion, sentiment_score, responses = process_input(user_input)
+    named_entities = identify_named_entities(user_input)
+
+    # Update emotions and sentiment score
+    if abs(sentiment_score - st.session_state["previous_sentiment_score"]) > 0.4:
+      st.session_state["previous_emotion"] = st.session_state["current_emotion"]
+      st.session_state["current_emotion"] = emotion
+      st.session_state["previous_sentiment_score"] = sentiment_score
+
+    # Offer a quote based on emotion
+    if emotion != "neutral" and not emotion_contexts[emotion]["quote_offered"]:
+      quote_choice = st.radio("Would you like to hear a quote?", ("Yes", "No"), key="quote_choice")
+      if quote_choice == "Yes":
+        st.chat_message(provide_quote(emotion), role="assistant")
+        emotion_contexts[emotion]["quote_offered"] = True
+        st.chat_message("Do you feel a bit better or would you like to keep talking?", role="assistant")
+      elif quote_choice == "No":
+        st.chat_message("Let's continue our conversation.", role="assistant")
+
+    # Generate response
+    if st.session_state["previous_emotion"] == st.session_state["current_emotion"]:
+      response = random.choice(responses)
+    else:
+      response = "It seems like there might be a change in how you're feeling. Can you tell me more?"
+    if named_entities:
+      response += f" It must be significant for you to mention {', '.join(named_entities)}."
+    st.chat_message(response, role="assistant")
 
 # Run the chatbot
-if __name__ == "__main__":
-    eliza_chatbot()
+eliza_chatbot()
